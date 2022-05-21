@@ -169,3 +169,17 @@ For example:
 launches 2 threads
 
 Enter the simulated data via the keyboard. Press enter to process
+
+fifotest.c
+-----------
+Test of FIFO capability.
+Main program creates to fifo's, and main terminal writes data entered in main terminal to pipes which are read in two other independant terminal windows.
+
+To build:
+gcc -o fifotest fifotest.c
+
+To run:
+./fifotest
+
+Then follow instructions on the display
+
