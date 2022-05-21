@@ -9,9 +9,8 @@
 
 #define DAPU1RX "/tmp/dapu1rx"
 #define DAPU1TX "/tmp/dapu1tx"
-#define EXIT_STRING "q"
-#define CONTINUE_STRING "c"
-#define MAX_LEN 128
+#define EXIT_STRING "quit"
+#define MAX_LEN 80
 
 int fdu1rx;
 int fdu1tx;
@@ -31,8 +30,9 @@ void main (void) {
     
 
     fprintf(stdout,"1) Open two terminal windows\n");
-    fprintf(stdout,"2) Type the following in one terminal:\n\tcat < /tmp/dapu1rx\n");
-    fprintf(stdout,"3) Type the following in the other terminal:\n\tcat < /tmp/dapu1tx\n");
+    fprintf(stdout,"2) Type the following in one terminal:\n\tcat /tmp/dapu1rx\n");
+    fprintf(stdout,"3) Type the following in the other terminal:\n\tcat /tmp/dapu1tx\n");
+    fprintf(stdout,"1) Type 'quit' to exit\n");
 
     unlink(DAPU1RX);
     unlink(DAPU1TX);
@@ -71,7 +71,7 @@ void main (void) {
 
         fprintf(stdout,"Enter message: ");
         if(fgets(s, MAX_LEN, stdin) > 0) {
-            if (strcmp(EXIT_STRING, s) == 0) {
+            if (strstr(s, EXIT_STRING) != NULL) {
                 return;
             }
         }
