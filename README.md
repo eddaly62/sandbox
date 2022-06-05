@@ -183,3 +183,14 @@ To run:
 
 Then follow instructions on the display
 
+createid
+---------
+File that creates an ID file that can be compiled into your app
+Contains git sha and branch
+
+Put the following in your Makefile:
+source createid
+
+You will need the file and path of the ouput to fit your development
+
+
