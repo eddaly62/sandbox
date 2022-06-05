@@ -1,11 +1,13 @@
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 LOCALSHA=$(git rev-parse HEAD)
+BOD=$(date)
 echo "// dapID.c" > dapID.c
 echo "// This an auto-generated file, do not edit" >> dapID.c
 echo "// It contains creation data that will be embedded in the dap library" >> dapID.c
 echo "// Include in dapinit function so it also gets included in application" >> dapID.c
 echo "void dapID(void) {" >> dapID.c
-echo -ne "\tconst char dapBranchID[] = \"DAP, Gen 1, Branch = $BRANCH\";\n" >> dapID.c
-echo -ne "\tconst char dapLocalSHA[] = \"DAP, Gen 1, SHA = $LOCALSHA\";\n" >> dapID.c
+echo -ne "\tconst char dapDate[] = \"DAP: $BOD\";\n" >> dapID.c
+echo -ne "\tconst char dapBranchID[] = \"DAP: Branch = $BRANCH\";\n" >> dapID.c
+echo -ne "\tconst char dapLocalSHA[] = \"DAP: SHA = $LOCALSHA\";\n" >> dapID.c
 echo -ne "\treturn;\n" >> dapID.c
 echo "}" >> dapID.c
