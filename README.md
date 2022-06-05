@@ -184,6 +184,7 @@ To run:
 Then follow instructions on the display
 
 createid
+createid1
 ---------
 File that creates an ID file that can be compiled into your app
 Contains git sha and branch
