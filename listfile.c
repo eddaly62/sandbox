@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <stdint.h>
 
 char *tokens[3] = {
     "fifo",
@@ -12,12 +15,13 @@ char *tokens[3] = {
     "c"
 };
 
-int findfiles(const char *pathname, char *token[], int numtokens) {
+int findfiles(const char *pathname, char *token[], int numtokens, uint16_t ftype) {
 
-    int i, n;
-    char *r;
+    int i, n, ri;
+    char *rs;
     DIR *dir;
     struct dirent *entity;
+    struct stat sb;
 
     dir = opendir(pathname);
     if (dir == NULL) {
@@ -26,21 +30,30 @@ int findfiles(const char *pathname, char *token[], int numtokens) {
 
     entity = readdir(dir);
     if (entity == NULL) {
+        closedir(dir);
         return -1;
     }
 
     while ( entity != NULL) {
         for (i = 0, n = 0; i < numtokens; i++) {
-            r = strcasestr(entity->d_name, token[i]);
-            if (r != NULL) {
+            rs = strcasestr(entity->d_name, token[i]);
+            if (rs != NULL) {
                 // matched a token from the token list
                 printf("found token: %s in %s\n", token[i], entity->d_name);
                 n++;
             }
         }
         if (n == numtokens) {
-            // print matching file
-            printf("%s\n", entity->d_name);
+            // test file type
+            ri = stat(entity->d_name, &sb);
+            if (ri == -1) {
+                closedir(dir);
+                return -1;
+            }
+            if ((sb.st_mode & S_IFMT) == ftype) {
+                // print matching file
+                printf("found file: %s\n", entity->d_name);
+            }
         }
         entity = readdir(dir);
     }
@@ -76,6 +89,6 @@ int listfiles(const char *pathname) {
 int main(int argc, char* argv[]) {
 
     //listfiles(".");
-    findfiles(".", tokens, 3);
+    findfiles(".", tokens, 3, S_IFREG);
     return 0;
 }
