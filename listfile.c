@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof((arr)[0]))
+
 char *tokens[3] = {
     "fifo",
     "test",
@@ -70,6 +72,8 @@ int find_file(const char *pathname, char *token[], int numtokens, uint16_t ftype
             if ((sb.st_mode & S_IFMT) == ftype) {
                 // its the right file type
                 printf("\tfound file: %s\n", entity->d_name);
+                closedir(dir);
+                return 0;
             }
         }
 
@@ -77,8 +81,9 @@ int find_file(const char *pathname, char *token[], int numtokens, uint16_t ftype
         entity = readdir(dir);
     }
 
+    // no match...with tokens and file type
     closedir(dir);
-    return 0;
+    return -1;
 }
 
 int list_files(const char *pathname) {
@@ -96,6 +101,7 @@ int list_files(const char *pathname) {
         return -1;
     }
 
+    // note: only d_name and d_ino are guarnteed across platforms
     while ( entity != NULL) {
         printf("%s: type(%d), length(%d), ino(%lu)\n", entity->d_name, entity->d_type, entity->d_reclen, entity->d_ino);
         entity = readdir(dir);
@@ -109,7 +115,7 @@ int main(int argc, char* argv[]) {
 
     int r;
 
-    //list_files(".");
-    r = find_file(".", tokens, 3, S_IFREG);
+    r = list_files(".");
+    r = find_file(".", tokens, ARRAY_SIZE(tokens), S_IFREG);
     return 0;
 }
