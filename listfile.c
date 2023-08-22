@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <stdint.h>
+#include <assert.h>
 
 char *tokens[3] = {
     "fifo",
@@ -15,7 +16,13 @@ char *tokens[3] = {
     "c"
 };
 
-int findfiles(const char *pathname, char *token[], int numtokens, uint16_t ftype) {
+int find_file(const char *pathname, char *token[], int numtokens, uint16_t ftype) {
+
+    assert(pathname != NULL);
+    assert(token != NULL);
+    assert(numtokens > 0);
+    assert(ftype==S_IFBLK || ftype==S_IFCHR || ftype==S_IFIFO ||
+           ftype==S_IFLNK || ftype==S_IFREG || ftype==S_IFSOCK);
 
     int i, n, ri;
     char *rs;
@@ -23,11 +30,13 @@ int findfiles(const char *pathname, char *token[], int numtokens, uint16_t ftype
     struct dirent *entity;
     struct stat sb;
 
+    // open a directory stream
     dir = opendir(pathname);
     if (dir == NULL) {
         return -1;
     }
 
+    // first read of directory stream
     entity = readdir(dir);
     if (entity == NULL) {
         closedir(dir);
@@ -35,26 +44,36 @@ int findfiles(const char *pathname, char *token[], int numtokens, uint16_t ftype
     }
 
     while ( entity != NULL) {
+
+        // scan file name for tokens
         for (i = 0, n = 0; i < numtokens; i++) {
             rs = strcasestr(entity->d_name, token[i]);
             if (rs != NULL) {
                 // matched a token from the token list
                 printf("found token: %s in %s\n", token[i], entity->d_name);
+                // count the tokens matched in the file name
                 n++;
             }
         }
+
+        // if file name has all of the tokens in it
         if (n == numtokens) {
-            // test file type
+
+            // test the file type
             ri = stat(entity->d_name, &sb);
             if (ri == -1) {
                 closedir(dir);
                 return -1;
             }
+
+            // validate file type
             if ((sb.st_mode & S_IFMT) == ftype) {
-                // print matching file
-                printf("found file: %s\n", entity->d_name);
+                // its the right file type
+                printf("\tfound file: %s\n", entity->d_name);
             }
         }
+
+        // read the next file from the directory stream
         entity = readdir(dir);
     }
 
@@ -62,7 +81,7 @@ int findfiles(const char *pathname, char *token[], int numtokens, uint16_t ftype
     return 0;
 }
 
-int listfiles(const char *pathname) {
+int list_files(const char *pathname) {
 
     DIR *dir;
     struct dirent *entity;
@@ -88,7 +107,9 @@ int listfiles(const char *pathname) {
 
 int main(int argc, char* argv[]) {
 
-    //listfiles(".");
-    findfiles(".", tokens, 3, S_IFREG);
+    int r;
+
+    //list_files(".");
+    r = find_file(".", tokens, 3, S_IFREG);
     return 0;
 }
