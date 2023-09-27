@@ -18,7 +18,9 @@ char *tokens[3] = {
     "c"
 };
 
-int find_file(const char *pathname, char *token[], int numtokens, uint16_t ftype) {
+char found_file[256];
+
+int find_file(const char *pathname, char *token[], int numtokens, uint16_t ftype, char *file) {
 
     assert(pathname != NULL);
     assert(token != NULL);
@@ -72,6 +74,7 @@ int find_file(const char *pathname, char *token[], int numtokens, uint16_t ftype
             if ((sb.st_mode & S_IFMT) == ftype) {
                 // its the right file type
                 printf("\tfound file: %s\n", entity->d_name);
+                memcpy(file, entity->d_name, strlen(entity->d_name));
                 closedir(dir);
                 return 0;
             }
@@ -116,6 +119,7 @@ int main(int argc, char* argv[]) {
     int r;
 
     r = list_files(".");
-    r = find_file(".", tokens, ARRAY_SIZE(tokens), S_IFREG);
+    r = find_file(".", tokens, ARRAY_SIZE(tokens), S_IFREG, found_file);
+    printf("found_file = %s, len = %ld\n", found_file, strlen(found_file));
     return 0;
 }
