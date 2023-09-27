@@ -14,10 +14,10 @@ typedef struct cf {
 
 int conf_parse_line(char *si, char *so[]) {
 
+    assert(si != NULL);
     int i;
     char *token;
     char *sic, *sicc;
-    assert(si != NULL);
 
     if (si[0] == '#') {
         // line is a comment
@@ -49,6 +49,20 @@ int conf_parse_line(char *si, char *so[]) {
     return i;
 }
 
+// config setting
+int conf_set(char *sarg[]){
+
+    int r;
+    r = memcmp("fg", sarg[0], strlen(sarg[0]));
+    if(r == 0){
+        printf("setting %s\n",sarg[0]);
+        return 0;
+    }
+    else {
+        printf("Nothing to set\n");
+        return -1;
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -65,6 +79,10 @@ int main(int argc, char *argv[])
 
     len = conf_parse_line(s, so);
     printf("len = %d\n", len);
+
+    if (len > 1) {
+        conf_set(so);
+    }
 
 #if 0
     if (argc != 2) {
