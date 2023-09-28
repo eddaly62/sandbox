@@ -91,6 +91,7 @@ int conf_read_file(char *pathname, char *so[]) {
 
         if (strlen(si) > 1) {
             // not a blank line
+            // (a blank line contains only a \n)
             printf("readin %s\n", si);
 
             len = conf_parse_line(si, so);
