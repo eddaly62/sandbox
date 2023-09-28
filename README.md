@@ -14,6 +14,13 @@ gcc --version
 Should see version number
 
 
+conf.c
+-------
+This program has functions that read and process config files.
+The test config or ini file is confdata.conf
+Use "source mkconf" to make the program
+
+
 termtest.c
 -----------
 This program is run from the command line of the terminal that you want to test.

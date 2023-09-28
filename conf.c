@@ -6,7 +6,31 @@
 #include <string.h>
 #include <assert.h>
 
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
+// get file stats on config file
+int conf_data_file_stats(char *pathname) {
+
+    assert(pathname != NULL);
+    struct stat sb;
+
+    if (stat(pathname, &sb) == -1) {
+        perror("Error: could not get file stat ");
+        return -1;
+    }
+
+    printf("File size:                %lld bytes\n", (long long) sb.st_size);
+    printf("Last status change:       %s", ctime(&sb.st_ctime));
+    printf("Last file access:         %s", ctime(&sb.st_atime));
+    printf("Last file modification:   %s", ctime(&sb.st_mtime));
+
+}
+
+
+// parses a line of the configure file
 int conf_parse_line(char *si, char *so[]) {
 
     assert(si != NULL);
@@ -19,7 +43,7 @@ int conf_parse_line(char *si, char *so[]) {
     sic = strdup(si);
     sicc = sic;
 
-    if ((si[0] == '#') || (si[0] == ' ')) {
+    if ((si[0] == '#') || (si[0] == '\n')) {
         // line is a comment or blank
         return 0;
     }
@@ -80,6 +104,12 @@ int conf_read_file(char *pathname, char *so[]) {
     FILE *fd;
     char si[100];
 
+    // get status on config data file
+    r = conf_data_file_stats(pathname);
+    if (r == -1) {
+        printf("Error getting file status");
+    }
+
     // Open the file for reading
     fd = fopen (pathname, "r");
 	if (fd == NULL) {
@@ -89,7 +119,7 @@ int conf_read_file(char *pathname, char *so[]) {
 
     while (fgets(si, MAX_LINE, fd) != NULL) {
 
-        if (strlen(si) > 1) {
+        //if (strlen(si) > 1) {
             // not a blank line
             // (a blank line contains only a \n)
             printf("readin %s\n", si);
@@ -100,7 +130,7 @@ int conf_read_file(char *pathname, char *so[]) {
             if (len > 1) {
                 conf_set(so);
             }
-        }
+        //}
 
     }
 
