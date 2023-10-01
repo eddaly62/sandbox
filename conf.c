@@ -10,12 +10,40 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <stdint.h>
+
+// get checksum of file
+// returns checksum or error
+int get_file_checksum(char *pathname) {
+
+    assert(pathname != NULL);
+    int fd;
+    uint8_t r;
+    uint8_t sin;
+
+    fd = open(pathname, O_RDONLY, (S_IRUSR | S_IRGRP | S_IROTH));
+    if (fd == -1){
+        // file does not exist
+        return -1;
+    }
+
+    r = 0;
+    while(read(fd,&sin, 1) != 0){
+        r += sin;
+    }
+    printf("file(%s) checksum(0x%02x)\n", pathname, r);
+
+    close(fd);
+    return r;
+}
 
 // get file stats on config file
 int conf_data_file_stats(char *pathname) {
 
     assert(pathname != NULL);
     struct stat sb;
+    int r;
 
     if (stat(pathname, &sb) == -1) {
         perror("Error: could not get file stat ");
@@ -27,6 +55,11 @@ int conf_data_file_stats(char *pathname) {
     printf("Last file access:         %s", ctime(&sb.st_atime));
     printf("Last file modification:   %s", ctime(&sb.st_mtime));
 
+    r = get_file_checksum("confchecksumtest.conf");
+    r = get_file_checksum(pathname);
+    if (r == -1) {
+        printf("Error getting %s file checksum, file may not exist\n", pathname);
+    }
 }
 
 
