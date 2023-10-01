@@ -14,8 +14,50 @@
 #include <stdint.h>
 
 // get checksum of file
-// returns checksum or error
-int get_file_checksum(char *pathname) {
+// returns -1 if error otherwise number of bytes read (1)
+int get_file_checksum(char *pathname, uint8_t *chksum) {
+
+    assert(pathname != NULL);
+    int fd;
+    uint8_t r;
+    uint8_t sin;
+
+    fd = open(pathname, (O_CREAT |O_RDWR), (S_IWUSR | S_IRUSR));
+    if (fd == -1){
+        // file does not exist
+        return -1;
+    }
+
+    r = read(fd, chksum, 1);
+
+    close(fd);
+    return r;
+}
+
+// get checksum of file
+// returns -1 if error otherwise number of bytes saved (1)
+int save_file_checksum(char *pathname, uint8_t *chksum) {
+
+    assert(pathname != NULL);
+    int fd;
+    uint8_t r;
+    uint8_t sin;
+
+    fd = open(pathname, (O_CREAT |O_RDWR), (S_IWUSR | S_IRUSR));
+    if (fd == -1){
+        // file does not exist
+        return -1;
+    }
+
+    r = write(fd, chksum, 1);
+
+    close(fd);
+    return r;
+}
+
+// get checksum of file
+// returns checksum otherwise error
+int calc_file_checksum(char *pathname) {
 
     assert(pathname != NULL);
     int fd;
@@ -44,6 +86,7 @@ int conf_data_file_stats(char *pathname) {
     assert(pathname != NULL);
     struct stat sb;
     int r;
+    uint8_t c1, c2;
 
     if (stat(pathname, &sb) == -1) {
         perror("Error: could not get file stat ");
@@ -55,11 +98,24 @@ int conf_data_file_stats(char *pathname) {
     printf("Last file access:         %s", ctime(&sb.st_atime));
     printf("Last file modification:   %s", ctime(&sb.st_mtime));
 
-    r = get_file_checksum("confchecksumtest.conf");
-    r = get_file_checksum(pathname);
+    r = calc_file_checksum("confchecksumtest.conf");
+    r = calc_file_checksum(pathname);
     if (r == -1) {
         printf("Error getting %s file checksum, file may not exist\n", pathname);
     }
+    // save checksum to a hiden file
+    c1 = (uint8_t)r;
+    r = save_file_checksum(".confchksum", &c1);
+
+    r = get_file_checksum(".confchksum", &c2);
+    if (r == -1){
+        printf("Error reading in check sum value\n");
+    }
+    else{
+        printf("read in 0x%02x from confchksum\n", c2);
+    }
+
+    return r;
 }
 
 
