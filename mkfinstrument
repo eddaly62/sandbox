@@ -1,0 +1,2 @@
+# source mkfinstrument
+gcc finstrument.c -o finstrument -ggdb -finstrument-functions
