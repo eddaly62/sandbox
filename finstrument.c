@@ -13,9 +13,12 @@ enum ETIME {START = 0, END = 1};
 typedef struct fc {
 	int call_count;
 	void *this_fn;
-	void *call_site;
 	char sfile[MAX_LEN];
 	int line;
+	struct timeval start;
+	struct timeval end;
+	double time_max;
+	double time_min;
 } STATS;
 
 int stats_count;
@@ -24,10 +27,11 @@ STATS pstats[100];
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_instrument_function));
-void update_stats(char *f, int line, void *this_fn, void *call_site) __attribute__((no_instrument_function));
+void update_stats_start(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
+void update_stats_end(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
 
 
-void update_stats(char *f, int line, void *this_fn, void *call_site){
+void update_stats_start(char *f, int line, void *this_fn){
 
 	int i;
 
@@ -41,23 +45,45 @@ void update_stats(char *f, int line, void *this_fn, void *call_site){
 
 	// not in table
 	pstats[stats_count].call_count = 1;
-	pstats[stats_count].call_site = call_site;
 	pstats[stats_count].line = line;
 	pstats[stats_count].this_fn = this_fn;
 	memcpy(pstats[stats_count].sfile, f, strlen(f));
+	gettimeofday(&pstats[stats_count].start, NULL);
 	stats_count++;
 	return;
 }
 
+void update_stats_end(char *f, int line, void *this_fn){
 
+	int i;
+	double startusec, endusec, elapsed;
+
+	for (i = 0; i < 100; i++) {
+		if (this_fn == pstats[i].this_fn) {
+			// match
+			gettimeofday(&pstats[i].end, NULL);
+			startusec = pstats[i].start.tv_sec * 1000000 + pstats[i].start.tv_usec;
+			endusec = pstats[i].end.tv_sec * 1000000 + pstats[i].end.tv_usec;
+			elapsed = (endusec - startusec);	// usec
+			pstats[i].time_max = elapsed;
+			pstats[i].time_min = elapsed;
+			return;
+		}
+	}
+
+	// not in table
+	fprintf(stderr, "table insertion error\n");
+	return;
+}
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
-	update_stats(__FILE__, __LINE__, this_fn, call_site);
+	update_stats_start(__FILE__, __LINE__, this_fn);
 	//printf("--> File(%s) Line(%d) Count(%d) %p %p\n", __FILE__, __LINE__, cnt, this_fn, call_site);
 }
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
 	//printf("<-- %p %p\n", this_fn, call_site);
+	update_stats_end(__FILE__, __LINE__, this_fn);
 }
 //#endif
 
