@@ -10,7 +10,7 @@ enum ETIME {START = 0, END = 1};
 
 //#if 0
 #define MAX_LEN	64
-typedef struct fc {
+typedef struct st {
 	int call_count;
 	void *this_fn;
 	char sfile[MAX_LEN];
@@ -21,9 +21,12 @@ typedef struct fc {
 	double time_min;
 } STATS;
 
-int stats_count;
-STATS pstats[100];
+typedef struct ps {
+	int stats_count;
+	STATS stats[100];
+} PSTATS;
 
+PSTATS pstats;
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_instrument_function));
@@ -35,38 +38,41 @@ void update_stats_start(char *f, int line, void *this_fn){
 
 	int i;
 
-	for (i = 0; i < 100; i++) {
-		if (this_fn == pstats[i].this_fn) {
+	for (i = 0; i <= 100; i++) {
+		if (this_fn == pstats.stats[i].this_fn) {
 			// match
-			pstats[i].call_count++;
+			pstats.stats[i].call_count++;
 			return;
 		}
 	}
 
 	// not in table
-	pstats[stats_count].call_count = 1;
-	pstats[stats_count].line = line;
-	pstats[stats_count].this_fn = this_fn;
-	memcpy(pstats[stats_count].sfile, f, strlen(f));
-	gettimeofday(&pstats[stats_count].start, NULL);
-	stats_count++;
+	pstats.stats[pstats.stats_count].call_count = 1;
+	pstats.stats[pstats.stats_count].line = line;
+	pstats.stats[pstats.stats_count].this_fn = this_fn;
+	memcpy(pstats.stats[pstats.stats_count].sfile, f, strlen(f));
+	gettimeofday(&pstats.stats[pstats.stats_count].start, NULL);
+	if (pstats.stats_count < 100) {
+		pstats.stats_count++;
+	}
 	return;
 }
 
 void update_stats_end(char *f, int line, void *this_fn){
 
 	int i;
-	double startusec, endusec, elapsed;
+	long long startusec, endusec;
+	double elapsed;
 
-	for (i = 0; i < 100; i++) {
-		if (this_fn == pstats[i].this_fn) {
+	for (i = 0; i <= 100; i++) {
+		if (this_fn == pstats.stats[i].this_fn) {
 			// match
-			gettimeofday(&pstats[i].end, NULL);
-			startusec = pstats[i].start.tv_sec * 1000000 + pstats[i].start.tv_usec;
-			endusec = pstats[i].end.tv_sec * 1000000 + pstats[i].end.tv_usec;
-			elapsed = (endusec - startusec);	// usec
-			pstats[i].time_max = elapsed;
-			pstats[i].time_min = elapsed;
+			gettimeofday(&pstats.stats[i].end, NULL);
+			startusec = (pstats.stats[i].start.tv_sec * 1000000) + pstats.stats[i].start.tv_usec;
+			endusec = (pstats.stats[i].end.tv_sec * 1000000) + pstats.stats[i].end.tv_usec;
+			elapsed = (double)(endusec - startusec);	// usec
+			pstats.stats[i].time_max = elapsed;
+			pstats.stats[i].time_min = elapsed;
 			return;
 		}
 	}
@@ -127,6 +133,7 @@ double elapsed_time(enum ETIME sts, struct timeval *start, struct timeval *end)
 int main(int argc, char *argv[])
 {
 	double elapsedt=0;
+	pstats.stats_count = 0;
 
 	elapsedt = elapsed_time(START, &start, &end);
 	sleep(1);
