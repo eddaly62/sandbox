@@ -5,8 +5,8 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <stdlib.h>
 
-enum ETIME {START = 0, END = 1};
 
 //#if 0
 #define MAX_LEN	64
@@ -15,8 +15,6 @@ typedef struct st {
 	void *this_fn;
 	char sfile[MAX_LEN];
 	int line;
-	struct timeval start;
-	struct timeval end;
 	unsigned long time_start;
 	unsigned long time_end;
 	unsigned long time_max;
@@ -28,46 +26,65 @@ typedef struct ps {
 	STATS stats[100];
 } PSTATS;
 
-PSTATS pstats;
+PSTATS pstats = { .stats_count = 0 };
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void update_stats_start(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
 void update_stats_end(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
 void print_stats(void) __attribute__((no_instrument_function));
+unsigned long get_time(void) __attribute__((no_instrument_function));
+unsigned long get_time_diff(unsigned long start, unsigned long end) __attribute__((no_instrument_function));
+int main(int argc, char *argv[]) __attribute__((no_instrument_function));
+
+unsigned long get_time(void) {
+
+	struct timeval time;
+
+	gettimeofday(&time, NULL);
+	return ((time.tv_sec * 1000000) + time.tv_usec);
+}
+
+unsigned long get_time_diff(unsigned long start, unsigned long end) {
+	return (end - start);
+}
 
 void print_stats(void) {
 
 	int i;
 	for (i = 0; i < pstats.stats_count; i++) {
-		printf("file(%s), this_fn(%p), count(%d), min time(%lu)\n",
-		 pstats.stats[i].sfile, pstats.stats[i].this_fn, pstats.stats[i].call_count, pstats.stats[i].time_start);
+		printf("file(%s), this_fn(%p), count(%d), min time(%lu), max time(%lu)\n",
+		 pstats.stats[i].sfile, pstats.stats[i].this_fn, pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
 	}
 }
 
-void update_stats_start(char *f, int line, void *this_fn){
+void update_stats_start(char *file, int line, void *this_fn){
 
 	int i;
 	unsigned long startusec;
 
-#if 0
-	for (i = 0; i <= 100; i++) {
+	if (pstats.stats_count == 0) {
+		atexit(print_stats);
+	}
+
+	for (i = 0; i < 100; i++) {
 		if (this_fn == pstats.stats[i].this_fn) {
-			// match
+			// match, already in table, just update the stuff that changed
 			pstats.stats[i].call_count++;
+			pstats.stats[i].time_start = get_time();
 			return;
 		}
 	}
-#endif
+
 	// not in table
 	i = pstats.stats_count;
 	pstats.stats[i].call_count = 1;
 	pstats.stats[i].line = line;
 	pstats.stats[i].this_fn = this_fn;
-	memcpy(pstats.stats[i].sfile, f, strlen(f));
-	gettimeofday(&pstats.stats[i].start, NULL);
-	startusec = (pstats.stats[i].start.tv_sec * 1000000) + pstats.stats[i].start.tv_usec;
-	pstats.stats[i].time_start = startusec;
+	memcpy(pstats.stats[i].sfile, file, strlen(file));
+	pstats.stats[i].time_start = get_time();
+	pstats.stats[i].time_min = pstats.stats[i].time_start;
+	pstats.stats[i].time_max = 0;
 	if (pstats.stats_count < 100) {
 		pstats.stats_count++;
 	}
@@ -77,24 +94,28 @@ void update_stats_start(char *f, int line, void *this_fn){
 void update_stats_end(char *f, int line, void *this_fn){
 
 	int i;
-	long long startusec, endusec;
-	double elapsed;
-#if 0
-	for (i = 0; i <= 100; i++) {
+	unsigned long elapsed;
+
+	for (i = 0; i < 100; i++) {
 		if (this_fn == pstats.stats[i].this_fn) {
+
 			// match
-			gettimeofday(&pstats.stats[i].end, NULL);
-			startusec = (pstats.stats[i].start.tv_sec * 1000000) + pstats.stats[i].start.tv_usec;
-			endusec = (pstats.stats[i].end.tv_sec * 1000000) + pstats.stats[i].end.tv_usec;
-			elapsed = (double)(endusec - startusec);	// usec
-			pstats.stats[i].time_max = elapsed;
-			pstats.stats[i].time_min = elapsed;
+			pstats.stats[i].time_end = get_time();
+			elapsed = get_time_diff(pstats.stats[i].time_start, pstats.stats[i].time_end);
+
+			if (elapsed < pstats.stats[i].time_min) {
+				pstats.stats[i].time_min = elapsed;
+			}
+
+			if (elapsed > pstats.stats[i].time_max) {
+				pstats.stats[i].time_max = elapsed;
+			}
 			return;
 		}
 	}
+
 	// not in table
 	fprintf(stderr, "table insertion error\n");
-#endif
 	return;
 }
 
@@ -109,7 +130,28 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site) {
 }
 //#endif
 
+
+enum ETIME {START = 0, END = 1};
+
+typedef void(*cb_func_c)(char*);
+
 struct timeval start, end;
+
+struct DAP_PATTERN_LUT{
+    char *pattern;
+    cb_func_c cb;
+};
+
+void callback1(char *s);
+
+struct DAP_PATTERN_LUT relut[] = {
+    {"033A", &callback1},
+};
+
+void callback1(char *s){
+    fprintf(stdout, "callback1 function called, pattern = %s\n", s);
+    return;
+}
 
 void do_nothing1(void) {
 	printf("do nothing 1\n");
@@ -130,6 +172,8 @@ double elapsed_time(enum ETIME sts, struct timeval *start, struct timeval *end)
 
 	do_nothing2();
 
+	(*relut[0].cb)(relut[0].pattern);
+
 	if (sts == START)
 	{
 		gettimeofday(start, NULL);
@@ -149,7 +193,6 @@ double elapsed_time(enum ETIME sts, struct timeval *start, struct timeval *end)
 int main(int argc, char *argv[])
 {
 	double elapsedt=0;
-	pstats.stats_count = 0;
 
 	elapsedt = elapsed_time(START, &start, &end);
 	sleep(1);
@@ -157,8 +200,7 @@ int main(int argc, char *argv[])
 
 	fprintf(stdout, "Elapsed time is %f usec\n", elapsedt);
 
-	print_stats();
-	return 0;
+	exit(-1);
 
 }
 
