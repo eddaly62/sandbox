@@ -17,8 +17,10 @@ typedef struct st {
 	int line;
 	struct timeval start;
 	struct timeval end;
-	double time_max;
-	double time_min;
+	unsigned long time_start;
+	unsigned long time_end;
+	unsigned long time_max;
+	unsigned long time_min;
 } STATS;
 
 typedef struct ps {
@@ -32,12 +34,23 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site) __attribute__((no_
 void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void update_stats_start(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
 void update_stats_end(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
+void print_stats(void) __attribute__((no_instrument_function));
 
+void print_stats(void) {
+
+	int i;
+	for (i = 0; i < pstats.stats_count; i++) {
+		printf("file(%s), this_fn(%p), count(%d), min time(%lu)\n",
+		 pstats.stats[i].sfile, pstats.stats[i].this_fn, pstats.stats[i].call_count, pstats.stats[i].time_start);
+	}
+}
 
 void update_stats_start(char *f, int line, void *this_fn){
 
 	int i;
+	unsigned long startusec;
 
+#if 0
 	for (i = 0; i <= 100; i++) {
 		if (this_fn == pstats.stats[i].this_fn) {
 			// match
@@ -45,13 +58,16 @@ void update_stats_start(char *f, int line, void *this_fn){
 			return;
 		}
 	}
-
+#endif
 	// not in table
-	pstats.stats[pstats.stats_count].call_count = 1;
-	pstats.stats[pstats.stats_count].line = line;
-	pstats.stats[pstats.stats_count].this_fn = this_fn;
-	memcpy(pstats.stats[pstats.stats_count].sfile, f, strlen(f));
-	gettimeofday(&pstats.stats[pstats.stats_count].start, NULL);
+	i = pstats.stats_count;
+	pstats.stats[i].call_count = 1;
+	pstats.stats[i].line = line;
+	pstats.stats[i].this_fn = this_fn;
+	memcpy(pstats.stats[i].sfile, f, strlen(f));
+	gettimeofday(&pstats.stats[i].start, NULL);
+	startusec = (pstats.stats[i].start.tv_sec * 1000000) + pstats.stats[i].start.tv_usec;
+	pstats.stats[i].time_start = startusec;
 	if (pstats.stats_count < 100) {
 		pstats.stats_count++;
 	}
@@ -63,7 +79,7 @@ void update_stats_end(char *f, int line, void *this_fn){
 	int i;
 	long long startusec, endusec;
 	double elapsed;
-
+#if 0
 	for (i = 0; i <= 100; i++) {
 		if (this_fn == pstats.stats[i].this_fn) {
 			// match
@@ -76,20 +92,20 @@ void update_stats_end(char *f, int line, void *this_fn){
 			return;
 		}
 	}
-
 	// not in table
 	fprintf(stderr, "table insertion error\n");
+#endif
 	return;
 }
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
 	update_stats_start(__FILE__, __LINE__, this_fn);
-	//printf("--> File(%s) Line(%d) Count(%d) %p %p\n", __FILE__, __LINE__, cnt, this_fn, call_site);
+	printf("--> File(%s) Line(%d) Count(%d) %p %p\n", __FILE__, __LINE__, pstats.stats_count, this_fn, call_site);
 }
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
-	//printf("<-- %p %p\n", this_fn, call_site);
 	update_stats_end(__FILE__, __LINE__, this_fn);
+	printf("--> File(%s) Line(%d) Count(%d) %p %p\n", __FILE__, __LINE__, pstats.stats_count, this_fn, call_site);
 }
 //#endif
 
@@ -141,6 +157,7 @@ int main(int argc, char *argv[])
 
 	fprintf(stdout, "Elapsed time is %f usec\n", elapsedt);
 
+	print_stats();
 	return 0;
 
 }
