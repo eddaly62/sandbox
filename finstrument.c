@@ -121,12 +121,10 @@ void update_stats_end(char *f, int line, void *this_fn){
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
 	update_stats_start(__FILE__, __LINE__, this_fn);
-	printf("--> File(%s) Line(%d) Count(%d) %p %p\n", __FILE__, __LINE__, pstats.stats_count, this_fn, call_site);
 }
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
 	update_stats_end(__FILE__, __LINE__, this_fn);
-	printf("--> File(%s) Line(%d) Count(%d) %p %p\n", __FILE__, __LINE__, pstats.stats_count, this_fn, call_site);
 }
 //#endif
 
@@ -161,6 +159,9 @@ void do_nothing2(void) {
 	printf("do nothing 2\n");
 }
 
+void do_something(void) {
+	(*relut[0].cb)(relut[0].pattern);
+}
 
 // Determine elapse time
 double elapsed_time(enum ETIME sts, struct timeval *start, struct timeval *end)
@@ -171,6 +172,8 @@ double elapsed_time(enum ETIME sts, struct timeval *start, struct timeval *end)
 	do_nothing1();
 
 	do_nothing2();
+
+	do_something();
 
 	(*relut[0].cb)(relut[0].pattern);
 
