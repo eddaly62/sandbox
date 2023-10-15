@@ -1,2 +1,4 @@
 # source mkfinstrument
-gcc finstrument.c -o finstrument -ggdb -finstrument-functions -no-pie
+#gcc finstrument.c -o finstrument -ggdb -finstrument-functions -no-pie -ldl
+gcc -finstrument-functions -export-dynamic -ggdb -Wl,--export-dynamic finstrument.c -o finstrument -ldl
+#gcc -finstrument-functions -export-dynamic -ggdb finstrument.c -o finstrument -ldl

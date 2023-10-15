@@ -1,11 +1,17 @@
 // finstrument.c
 // test of using finstrument compile option to profile code
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <dlfcn.h>
+
+Dl_info info;
+void *extra_info;
 
 
 //#if 0
@@ -13,6 +19,7 @@
 typedef struct st {
 	int call_count;
 	void *this_fn;
+	void *call_site;
 	char sfile[MAX_LEN];
 	int line;
 	unsigned long time_start;
@@ -30,12 +37,15 @@ PSTATS pstats = { .stats_count = 0 };
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_instrument_function));
-void update_stats_start(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
-void update_stats_end(char *f, int line, void *this_fn) __attribute__((no_instrument_function));
+void update_stats_start(void *this_fn, void *call_site) __attribute__((no_instrument_function));
+void update_stats_end(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void print_stats(void) __attribute__((no_instrument_function));
 unsigned long get_time(void) __attribute__((no_instrument_function));
 unsigned long get_time_diff(unsigned long start, unsigned long end) __attribute__((no_instrument_function));
 int main(int argc, char *argv[]) __attribute__((no_instrument_function));
+void sig_handler(int signum) __attribute__((no_instrument_function));
+
+
 
 unsigned long get_time(void) {
 
@@ -49,21 +59,31 @@ unsigned long get_time_diff(unsigned long start, unsigned long end) {
 	return (end - start);
 }
 
-void print_stats(void) {
 
+void print_stats(void) {
 	int i;
 	for (i = 0; i < pstats.stats_count; i++) {
-		printf("file(%s), this_fn(%p), count(%d), min time(%lu), max time(%lu)\n",
-		 pstats.stats[i].sfile, pstats.stats[i].this_fn, pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
+		dladdr(pstats.stats[i].this_fn, &info);
+		strcpy(pstats.stats[i].sfile, info.dli_fname);
+
+		printf("file(%s), this_fn(%p, %s), count(%d), min time(%lu), max time(%lu)\n",
+		 pstats.stats[i].sfile, pstats.stats[i].this_fn, info.dli_sname,
+		 pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
 	}
 }
 
-void update_stats_start(char *file, int line, void *this_fn){
+void sig_handler(int signum) {
+	//print_stats();
+	exit(EXIT_SUCCESS);
+}
+
+void update_stats_start(void *this_fn, void *call_site){
 
 	int i;
 	unsigned long startusec;
 
 	if (pstats.stats_count == 0) {
+		signal(SIGINT, sig_handler);
 		atexit(print_stats);
 	}
 
@@ -79,9 +99,8 @@ void update_stats_start(char *file, int line, void *this_fn){
 	// not in table
 	i = pstats.stats_count;
 	pstats.stats[i].call_count = 1;
-	pstats.stats[i].line = line;
 	pstats.stats[i].this_fn = this_fn;
-	memcpy(pstats.stats[i].sfile, file, strlen(file));
+	pstats.stats[i].call_site = call_site;
 	pstats.stats[i].time_start = get_time();
 	pstats.stats[i].time_min = pstats.stats[i].time_start;
 	pstats.stats[i].time_max = 0;
@@ -91,7 +110,7 @@ void update_stats_start(char *file, int line, void *this_fn){
 	return;
 }
 
-void update_stats_end(char *f, int line, void *this_fn){
+void update_stats_end(void *this_fn, void *call_site){
 
 	int i;
 	unsigned long elapsed;
@@ -120,11 +139,11 @@ void update_stats_end(char *f, int line, void *this_fn){
 }
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
-	update_stats_start(__FILE__, __LINE__, this_fn);
+	update_stats_start(this_fn, call_site);
 }
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
-	update_stats_end(__FILE__, __LINE__, this_fn);
+	update_stats_end(this_fn, call_site);
 }
 //#endif
 
@@ -203,7 +222,8 @@ int main(int argc, char *argv[])
 
 	fprintf(stdout, "Elapsed time is %f usec\n", elapsedt);
 
-	exit(-1);
+	while(1);
+	exit(EXIT_SUCCESS);
 
 }
 
