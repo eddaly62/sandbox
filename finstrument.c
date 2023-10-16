@@ -10,18 +10,20 @@
 #include <signal.h>
 #include <dlfcn.h>
 
-Dl_info info;
-void *extra_info;
 
 
 //#if 0
 #define MAX_LEN	64
+#define MAX_FUNCTIONS	4096
+
+Dl_info info;
+void *extra_info;
+
 typedef struct st {
-	int call_count;
 	void *this_fn;
 	void *call_site;
 	char sfile[MAX_LEN];
-	int line;
+	unsigned long call_count;
 	unsigned long time_start;
 	unsigned long time_end;
 	unsigned long time_max;
@@ -30,7 +32,7 @@ typedef struct st {
 
 typedef struct ps {
 	int stats_count;
-	STATS stats[100];
+	STATS stats[MAX_FUNCTIONS];
 } PSTATS;
 
 PSTATS pstats = { .stats_count = 0 };
@@ -40,11 +42,12 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_i
 void update_stats_start(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void update_stats_end(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void print_stats(void) __attribute__((no_instrument_function));
+void fprint_stats(char *pathname) __attribute__((no_instrument_function));
 unsigned long get_time(void) __attribute__((no_instrument_function));
 unsigned long get_time_diff(unsigned long start, unsigned long end) __attribute__((no_instrument_function));
 int main(int argc, char *argv[]) __attribute__((no_instrument_function));
 void sig_handler(int signum) __attribute__((no_instrument_function));
-
+void fini(void) __attribute__((no_instrument_function));
 
 
 unsigned long get_time(void) {
@@ -66,10 +69,38 @@ void print_stats(void) {
 		dladdr(pstats.stats[i].this_fn, &info);
 		strcpy(pstats.stats[i].sfile, info.dli_fname);
 
-		printf("file(%s), this_fn(%p, %s), count(%d), min time(%lu), max time(%lu)\n",
+		printf("file(%s), this_fn(%p, %s), count(%lu), min time(%lu), max time(%lu)\n",
 		 pstats.stats[i].sfile, pstats.stats[i].this_fn, info.dli_sname,
 		 pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
 	}
+}
+
+void fprint_stats(char *pathname) {
+	int i;
+	FILE *fp;
+
+	fp = fopen(pathname, "w");
+
+	for (i = 0; i < pstats.stats_count; i++) {
+		dladdr(pstats.stats[i].this_fn, &info);
+		strcpy(pstats.stats[i].sfile, info.dli_fname);
+
+		if (i == 0) {
+			fprintf(fp, "file, function_ptr, function, count, min_time, max_time\n");
+		}
+		else {
+			fprintf(fp, "%s, %p, %s, %lu, %lu, %lu\n",
+			pstats.stats[i].sfile, pstats.stats[i].this_fn, info.dli_sname,
+			pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
+		}
+	}
+
+	fclose(fp);
+}
+
+void fini(void){
+	print_stats();
+	fprint_stats("finstrument.log");
 }
 
 void sig_handler(int signum) {
@@ -84,10 +115,10 @@ void update_stats_start(void *this_fn, void *call_site){
 
 	if (pstats.stats_count == 0) {
 		signal(SIGINT, sig_handler);
-		atexit(print_stats);
+		atexit(fini);
 	}
 
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < MAX_FUNCTIONS; i++) {
 		if (this_fn == pstats.stats[i].this_fn) {
 			// match, already in table, just update the stuff that changed
 			pstats.stats[i].call_count++;
@@ -104,7 +135,7 @@ void update_stats_start(void *this_fn, void *call_site){
 	pstats.stats[i].time_start = get_time();
 	pstats.stats[i].time_min = pstats.stats[i].time_start;
 	pstats.stats[i].time_max = 0;
-	if (pstats.stats_count < 100) {
+	if (pstats.stats_count < MAX_FUNCTIONS) {
 		pstats.stats_count++;
 	}
 	return;
@@ -115,7 +146,7 @@ void update_stats_end(void *this_fn, void *call_site){
 	int i;
 	unsigned long elapsed;
 
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < MAX_FUNCTIONS; i++) {
 		if (this_fn == pstats.stats[i].this_fn) {
 
 			// match
@@ -172,10 +203,12 @@ void callback1(char *s){
 
 void do_nothing1(void) {
 	printf("do nothing 1\n");
+	(*relut[0].cb)(relut[0].pattern);
 }
 
 void do_nothing2(void) {
 	printf("do nothing 2\n");
+	(*relut[0].cb)(relut[0].pattern);
 }
 
 void do_something(void) {
