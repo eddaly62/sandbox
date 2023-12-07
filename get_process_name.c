@@ -10,6 +10,10 @@
 #include <ctype.h>
 #include <assert.h>
 
+// returns length of name otherwise -1 if there was an error
+// pid - pid to examine
+// name - a pointer to were to store the name
+// len - maximum size of array where name will get stored
 int get_process_name_by_pid(int pid, char *name, size_t len)
 {
     FILE *f;
