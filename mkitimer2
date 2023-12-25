@@ -1,0 +1,2 @@
+# to use: source mkitimer2
+gcc itimer2.c -o itimer2 -lpthread -lrt

@@ -1,38 +1,16 @@
-// itimer.h
-
+// itimer.c
+#define _POSIX_C_SOURCE 199309
+//#define __USE_POSIX199309
 #include <time.h>
 #include <stdio.h>
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <errno.h>
-
-
-       #include <signal.h>
-       #include <stdint.h>
-       #include <stdio.h>
-       #include <stdlib.h>
-       #include <time.h>
-       #include <unistd.h>
+#include <stdlib.h>
 
 //#define CLOCKID CLOCK_REALTIME
-#define SIG SIGRTMIN
-
-           timer_t            timerid;
-           sigset_t           mask;
-           long long          freq_nanosecs;
-           struct sigevent    sev;
-           struct sigaction   sa;
-           struct itimerspec  its;
-
-
-
-
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <signal.h>
-#include <time.h>
+//#define SIG SIGRTMIN
 
 
 static int i = 0;

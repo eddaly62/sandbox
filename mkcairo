@@ -1,0 +1,3 @@
+# make cairo program
+# gcc cairo.c -o cairo $(pkg-config --cflags --libs cairo)
+gcc cairo.c -o cairo -lcairo

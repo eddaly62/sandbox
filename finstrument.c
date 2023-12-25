@@ -42,7 +42,8 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site) __attribute__((no_i
 void update_stats_start(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void update_stats_end(void *this_fn, void *call_site) __attribute__((no_instrument_function));
 void print_stats(void) __attribute__((no_instrument_function));
-void fprint_stats(char *pathname) __attribute__((no_instrument_function));
+void fprint_stats_csv(char *pathname) __attribute__((no_instrument_function));
+void fprint_stats_md(char *pathname) __attribute__((no_instrument_function));
 unsigned long get_time(void) __attribute__((no_instrument_function));
 unsigned long get_time_diff(unsigned long start, unsigned long end) __attribute__((no_instrument_function));
 int main(int argc, char *argv[]) __attribute__((no_instrument_function));
@@ -75,7 +76,8 @@ void print_stats(void) {
 	}
 }
 
-void fprint_stats(char *pathname) {
+// print results in csv file format
+void fprint_stats_csv(char *pathname) {
 	int i;
 	FILE *fp;
 
@@ -98,9 +100,41 @@ void fprint_stats(char *pathname) {
 	fclose(fp);
 }
 
+// print results in markdown file format
+void fprint_stats_md(char *pathname) {
+	int i;
+	FILE *fp;
+
+	fp = fopen(pathname, "w");
+
+	for (i = 0; i < pstats.stats_count; i++) {
+		dladdr(pstats.stats[i].this_fn, &info);
+		strcpy(pstats.stats[i].sfile, info.dli_fname);
+
+		if (i == 0) {
+			//fprintf(fp, "| file | function_ptr | function | count | min_time | max_time |\n");
+			fprintf(fp, "# %s\n\n", pathname);
+			fprintf(fp, "| function | count | min_time (usec) | max_time (usec) |\n");
+			fprintf(fp, "|----------|-------|-----------------|-----------------|\n");
+		}
+		else {
+			//fprintf(fp, "| %s | %p | %s | %lu | %lu | %lu |\n",
+			//pstats.stats[i].sfile, pstats.stats[i].this_fn, info.dli_sname,
+			//pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
+
+			fprintf(fp, "| %s | %lu | %lu | %lu |\n",
+			info.dli_sname, pstats.stats[i].call_count, pstats.stats[i].time_min, pstats.stats[i].time_max);
+		}
+	}
+
+	fclose(fp);
+}
+
+
 void fini(void){
 	print_stats();
-	fprint_stats("finstrument.log");
+	fprint_stats_csv("finstrument.csv");
+	fprint_stats_md("finstrument.md");
 }
 
 void sig_handler(int signum) {
